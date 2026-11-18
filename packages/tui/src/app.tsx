@@ -5,6 +5,7 @@ import "./component/spinner-renderable"
 import { Effect, Latch } from "effect"
 import { Service, type Endpoint } from "@opencode/client/effect/service"
 import { OpenCode, type SessionInfo } from "@opencode/client"
+import { RefreshRpc } from "@opencode/schema/models-dev"
 import { Global } from "@opencode/util/global"
 import { noTimeoutFetch } from "@opencode/util/no-timeout-fetch"
 import { ClipboardProvider, useClipboard } from "./context/clipboard"
@@ -1111,6 +1112,22 @@ function App() {
             .reload()
             .then(() => {
               toast.show({ variant: "success", message: "Configuration reloaded" })
+            })
+            .catch(toast.error)
+        },
+        category: "System",
+      },
+      {
+        name: "models.refresh",
+        title: "Refresh model list",
+        run: async () => {
+          dialog.clear()
+          toast.show({ variant: "info", message: "Refreshing model list…", duration: 30000 })
+          await client.api
+            .rpc(RefreshRpc)
+            .refresh({})
+            .then(() => {
+              toast.show({ variant: "success", message: "Model list refreshed" })
             })
             .catch(toast.error)
         },

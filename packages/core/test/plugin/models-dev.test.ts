@@ -9,6 +9,7 @@ import { LayerNode } from "@opencode/util/effect/layer-node"
 import { Bus } from "@opencode/core/bus"
 import { Location } from "@opencode/core/location"
 import { Model } from "@opencode/core/model"
+import { Rpc } from "@opencode/core/rpc"
 import { ModelsDev } from "@opencode/core/models-dev"
 import { ModelsDevPlugin } from "@opencode/core/plugin/models-dev"
 import { Plugin } from "@opencode/core/plugin"
@@ -1360,5 +1361,24 @@ describe("ModelsDevPlugin", () => {
         },
       ])
     }).pipe(Effect.provide(models(path.join(import.meta.dir, "fixtures", "models-dev-reasoning.json")))),
+  )
+
+  isolated.effect("refreshes the catalog through its RPC", () =>
+    Effect.gen(function* () {
+      const initial = richSnapshot("Acme")
+      const forced: Array<boolean | undefined> = []
+      const source = ModelsDev.Service.of({
+        get: () => Effect.succeed(initial.snapshot),
+        refresh: (force) => Effect.sync(() => void forced.push(force)),
+      })
+      const location = yield* owner
+      yield* ModelsDevPlugin.effect(location.host).pipe(
+        Effect.provideService(ModelsDev.Service, source),
+        Effect.provideContext(location.context),
+      )
+      const rpc = Context.get(location.context, Rpc.Service)
+      expect(yield* rpc.call("opencode.models", "refresh", {})).toEqual({})
+      expect(forced).toEqual([true])
+    }),
   )
 })

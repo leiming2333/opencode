@@ -35,6 +35,17 @@ export const ModelsDevPlugin = define({
   effect: Effect.fn(function* (ctx) {
     const modelsDev = yield* ModelsDev.Service
     const bus = yield* Bus.Service
+    // Clients refresh the catalog through this RPC instead of waiting for the periodic refresh.
+    // A host without RPC support still materialises the catalog; only the command is lost.
+    yield* ctx.rpc
+      .register(ModelsDev.RefreshRpc, {
+        refresh: () => modelsDev.refresh(true).pipe(Effect.as({})),
+      })
+      .pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("Failed to expose the model catalog refresh RPC", { cause }),
+        ),
+      )
     // Filtering and definition indexes are shared across Locations. Only Model materialization
     // makes mutable copies, after provider configuration and access have been resolved.
     const loaded = { data: snapshots(yield* modelsDev.get()) }
